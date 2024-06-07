@@ -44,10 +44,17 @@ export const generateRandomOrders = async (count: number, client: any) => {
 };
 
 // Function to generate random orders data and insert into the database
-export const generateAndInsertRandomOrders = async (count: number) => {
+export const generateAndInsertRandomOrders = async (request: any, response: any) => {
   try {
     const client = await pool.connect();
-
+    const { count } = request.query;
+    if (count === undefined || count == '') {
+      response.status(404).jsonp({
+        "status": "Bad Request",
+        "message": "count parameter not defined",
+      });
+    }
+    
     for (let i = 0; i < count; i++) {
       const order = {
         id: faker.datatype.number().toString(),
@@ -81,18 +88,28 @@ export const generateAndInsertRandomOrders = async (count: number) => {
         status_message: faker.lorem.sentence(),
         tag: null,
       };
-
+     console.log(order);
+     
+      
       // Insert the generated order into the database
-      await client.query(`
+     await client.query(`
         INSERT INTO orders (${Object.keys(order).join(', ')})
         VALUES (${Object.values(order).map((_, idx) => `$${idx + 1}`).join(', ')})
       `, Object.values(order));
     }
 
     ;
-    console.log(`${count} orders inserted into the database.`);
+    response.status(200).jsonp({
+      "status": "Success",
+      "message": `${count} orders inserted into the database.`,
+    });
+
   } catch (error) {
     console.error('Error inserting orders into the database:', error);
+    response.status(500).jsonp({
+      "status": "error",
+      "message": error,
+    });
   }
 };
 

@@ -8,7 +8,7 @@ const cors = require('cors');
 const pool = require('./db');
 const bodyParser = require('body-parser');
 import { generateRandomOrders } from './Orders/orders'
-
+import './Crons/Updateprices';
 const createUserTableAndInsertData = async (client: any) => {
   try {
     // Create users table if it doesn't exist
@@ -311,9 +311,6 @@ const createOrdersTable = async (client: any) => {
           CONSTRAINT unique_instrument_token UNIQUE (instrument_token)
         )
       `);
-
-
-  
         console.log('Portfolio Holdings table created successfully.');
       } else {
         console.log('Portfolio Holdings table already exists. Skipping creation.');

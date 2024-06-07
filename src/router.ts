@@ -18,7 +18,7 @@ import { GETPositions } from "./Portfolio/positions";
 import { PUTPositions } from "./Portfolio/positions";
 import {
   GetInstruments,
-  GetInstrumentsByExchange,
+  GetInstrumentsByExchange
 } from "./Instruments/instruments";
 import { GetQuotes, GetQuotesOHLC, GetQuotesLTP } from "./Quotes/quotes";
 import { GETCandleData } from "./HistoricalData/candle-data";
@@ -44,6 +44,7 @@ import {
   GETGTTtrigger,
   POSTGTTtrigger,
 } from "./GTT/triggers";
+
 const pool = require("./db");
 
 const UnderContruction = (request: any, response: any) => {
@@ -77,7 +78,7 @@ function sendPriceUpdates(ws: any) {
       mode: "ltp",
       tradable: true
     }];
-
+    console.log("response " ,response);
     // Check if the WebSocket connection is open before sending
     if (ws.readyState === ws.OPEN) {
       ws.send(JSON.stringify(response));
@@ -124,7 +125,7 @@ export async function startWebSocketServer() {
 
   const handleClientConnection = (ws: any) => {
     if (connectedClients.has(ws)) {
-      console.log("Duplicate connection detected. Closing connection.");
+      
       return ws.close();
     }
 
@@ -179,42 +180,37 @@ export async function startWebSocketServer() {
       const distinctTokensSet = new Set([...numericDbTokens, ...numericWebhookTokens]);
       const distinctTokens = [...distinctTokensSet];
   
-      console.log(distinctTokens);
-  
       if (!distinctTokens || distinctTokens.length === 0) {
         retryInterval = setInterval(() => checkDistinctTokens(client), 10000);
       } else {
-        clearTimeout(retryInterval);
+        clearInterval(retryInterval);
         // Process distinct tokens
-        distinctTokens.forEach((instrument) => {
+        for (const instrument of distinctTokens) {
           const instrument_token = instrument;
           if (!instrumentPrices[instrument_token]) {
-            let increasing = true;
-            let min_price = 10;
-            let max_price = 30;
-            instrumentPrices[instrument_token] = {
-              price: min_price,
-              interval: setInterval(() => {
-                if (increasing) {
-                  if (instrumentPrices[instrument_token].price < max_price) {
-                    instrumentPrices[instrument_token].price += 0.1;
-                  } else {
-                    increasing = false;
+            const instrumentCurrentPrice = await client.query(
+              `SELECT last_price FROM instruments WHERE instrument_token = $1`,
+              [instrument]
+            );
+  
+            if (instrumentCurrentPrice.rows.length > 0) {
+              instrumentPrices[instrument_token] = {
+                price: instrumentCurrentPrice.rows[0].last_price,
+                interval: setInterval(async () => {
+                  const updatedPriceResult = await client.query(
+                    `SELECT last_price FROM instruments WHERE instrument_token = $1`,
+                    [instrument]
+                  );
+  
+                  if (updatedPriceResult.rows.length > 0) {
+                    instrumentPrices[instrument_token].price = parseFloat(updatedPriceResult.rows[0].last_price.toFixed(2));
+                    sendPriceUpdatesToAllClients();
                   }
-                } else {
-                  if (instrumentPrices[instrument_token].price > min_price) {
-                    instrumentPrices[instrument_token].price -= 0.1;
-                  } else {
-                    increasing = true;
-                  }
-                }
-                // Round off to the last 2 decimal places
-                instrumentPrices[instrument_token].price = parseFloat(instrumentPrices[instrument_token].price.toFixed(2));
-                sendPriceUpdatesToAllClients();
-              }, 2000),
-            };
+                }, 2000),
+              };
+            }
           }
-        });
+        }
       }
     } catch (error) {
       console.error("Error in checkDistinctTokens:", error);
@@ -226,6 +222,8 @@ export async function startWebSocketServer() {
   };
   
   const interval = setInterval(() => checkDistinctTokens(client), 10000);
+  
+  
 }
 
 // Function to clear all intervals related to instruments

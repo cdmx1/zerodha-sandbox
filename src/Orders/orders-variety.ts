@@ -15,14 +15,14 @@ function hash(alg: any, data: any, salt:any, enc:any) {
 }
 
 export const POSTOrderVariety = async (request: any, response: any) => {
+  const client = await pool.connect();
+
   try {
+    
     const { authorization } = request.headers;
     // Extract user_id from the authorization header or token
     const tokenParts = authorization.split(' ');
     const [apiKey, accessToken] = tokenParts[tokenParts.length - 1].split(':');
-
-    const client = await pool.connect();
-
      // Fetch user_id based on the provided api_key and access_token
      const userQuery = await client.query(
       'SELECT id FROM users WHERE api_key = $1 AND access_token = $2',
@@ -45,6 +45,7 @@ export const POSTOrderVariety = async (request: any, response: any) => {
       quantity,
       product,
       validity,
+      price,
     } = request.body;
     const { variety } = request.params; 
 
@@ -73,9 +74,6 @@ export const POSTOrderVariety = async (request: any, response: any) => {
       ;
       return;
     }
-
-    // Generate a random price based on the variety using Faker
-    const price = faker.datatype.number({ min: 1, max: 100 });
 
     const orderID = generateRandomOrderID();
 
@@ -121,20 +119,27 @@ export const POSTOrderVariety = async (request: any, response: any) => {
     // After inserting the order, call the function to calculate and insert positions
     await calculateAndInsertPositions(client, orderID);
     simulateDelayedPostback(client, orderID)
-
-    response.status(200).jsonp({
+    const responseData = {
       status: 'success',
       data: {
         order_id: orderID,
       },
-    });
-    client.release();
+    };
+    console.log("Response data prepared:", responseData);
+
+    response.status(200).jsonp(responseData);
+    console.log("Response sent successfully");
+    
   } catch (error) {
     console.error('Error placing order:', error);
     response.status(500).jsonp({
       status: 'error',
       message: 'Error placing order',
     });
+  } finally{
+    console.log("Reached Finally block");
+    
+    client.release();
   }
 };
 
@@ -242,6 +247,8 @@ try {
   );
   if (orderQuery.rows.length > 0) {
     const orderDetails = orderQuery.rows[0];
+    console.log(orderDetails);
+    
     const query = {
       text: 'SELECT api_secret FROM users WHERE id = $1',
       values: [orderDetails.user_id],
@@ -288,7 +295,7 @@ try {
       "tag": orderDetails.tag,
       "guid": "93076XWl1mzshtvIgb"
     };
-
+   
     // Assuming sendPostbackUpdate function sends the payload
     sendPostbackUpdate(updatedStatusPayload);
 
@@ -308,10 +315,13 @@ try {
 // Function to send a POST request with the payload
 function sendPostbackUpdate(payload: any) {
   // Your API endpoint URL
-  const apiUrl = postback_url
+
+  const apiUrl = 'http://localhost:5688/webhook/z-postback';
+  console.log(apiUrl, payload);
+  
   const headers = {
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Type': 'application/json',
     },
   };
   axios.post(apiUrl,  JSON.stringify(payload), headers)
@@ -319,6 +329,11 @@ function sendPostbackUpdate(payload: any) {
       console.log('Postback sent successfully:', response.data);
     })
     .catch((error: any) => {
-      console.error('Error sending postback:', error);
+      if (error.response) {
+        console.error('Error status:', error.response.status);
+        console.error('Error data:', error.response.data);
+      } else {
+        console.error('Error message:', error.message);
+      }
     });
   }

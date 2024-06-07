@@ -1,4 +1,5 @@
 const faker = require('faker');
+const pool = require('../db');
 
 // Function to generate random quotes data for GetQuotes
 const generateRandomQuotesData = (): any => {
@@ -123,12 +124,71 @@ export const GetQuotes = (request: any, response: any) => {
 };
 
 // Function to handle GET request for GetQuotesOHLC
-export const GetQuotesOHLC = (request: any, response: any) => {
-  const randomOHLCData = generateRandomOHLCData();
+export const GetQuotesOHLC = async(request: any, response: any) => {
+  const { i } = request.query;
+  const [exchange, symbol] = i.split(':');
+
+  if (!exchange || !symbol) {
+    return response.status(400).json({ error: 'Please provide proper parameters' });
+  }
+
+  const { authorization } = request.headers;
+  if (!authorization) {
+    return response.status(401).json({ message: 'Authorization header missing' });
+  }
+  try {
+    const tokenParts = authorization.split(' ');
+    const [apiKey, accessToken] = tokenParts[tokenParts.length - 1].split(':');
+    const client = await pool.connect();
+    
+    // Fetch user_id based on the provided api_key and access_token
+    const userQuery = await client.query(
+      'SELECT id FROM users WHERE api_key = $1 AND access_token = $2',
+      [apiKey, accessToken]
+    );
+    const user = userQuery.rows[0];
+    
+    if (!user) {
+      response.status(401).jsonp({
+        "status": "error",
+        "message": "Unauthorized access",
+      });
+      ;
+      return;
+    }
+
+    const result = await client.query(
+      'SELECT instrument_token , last_price FROM instruments WHERE exchange = $1 AND tradingsymbol = $2',
+      [exchange, symbol]
+    );
+
+    response.status(200).jsonp({
+      status: "success",
+      data: result.rows.map((row: { last_price: number , instrument_token : number }) => ({
+        [`${exchange}:${symbol}`]: {
+          instrument_token: row.instrument_token, 
+          last_price: row.last_price,
+          ohlc: {
+            open: parseFloat(faker.finance.amount()),
+            high: parseFloat(faker.finance.amount()),
+            low: parseFloat(faker.finance.amount()),
+            close: row.last_price
+          }
+        }
+      }))
+    });
+
+  } catch (error) {
+    response.status(500).jsonp({
+      "status": "error",
+      "message": "Failed to fetch last_price",
+    });
+  }
+  /*const randomOHLCData = generateRandomOHLCData();
   response.status(200).jsonp({
     "status": "success",
     "data": randomOHLCData,
-  });
+  });*/
 };
 
 // Function to handle GET request for GetQuotesLTP

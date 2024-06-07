@@ -3,6 +3,8 @@ const pool = require('../db');
 // Function to handle GET request for retrieving positions from database
 export const GETPositions = async (request: any, response: any) => {
   try {
+    console.log("GET request received for positions");
+    
     const { authorization } = request.headers;
 
     // Extract user_id from the authorization header or token
