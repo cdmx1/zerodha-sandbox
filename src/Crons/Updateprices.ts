@@ -2,7 +2,7 @@ export {}
 const pool = require('../db');
 const cron =  require('node-cron');
 const minPrice = 10;
-const maxPrice = 30;
+const maxPrice = 40;
 const step = 0.2;
 const directionMap = new Map();
 
@@ -28,10 +28,7 @@ const updatePrices = async () => {
           direction = 'up';
         }
       }
-
       last_price = parseFloat(last_price.toFixed(2));
-
-      // Store the new direction
       directionMap.set(instrument_token, direction);
 
       //console.log("last_price" , last_price);
@@ -49,7 +46,7 @@ const updatePrices = async () => {
 };
 
 
-cron.schedule('*/5 * * * * *', updatePrices);
+cron.schedule('*/1 * * * * *', updatePrices);
 process.on('SIGINT', () => {
   pool.end(() => {
     console.log('Database connection closed.');

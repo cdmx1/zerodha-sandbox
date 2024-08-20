@@ -177,7 +177,7 @@ export const GetQuotesOHLC = async(request: any, response: any) => {
         }
       }))
     });
-
+    client.release();
   } catch (error) {
     response.status(500).jsonp({
       "status": "error",
