@@ -1,8 +1,9 @@
+import { log } from "console";
+
 const faker = require('faker');
 const pool = require('../db');
 // Function to generate random orders data
-export const generateRandomOrders = async (count: number, client: any) => {
-  // Query to select instrument_token and tradingsymbol randomly from the instruments table
+export const generateRandomOrders = async (count: number, client: any) => {  
   const instrumentsQuery = 'SELECT instrument_token, tradingsymbol FROM instruments ORDER BY RANDOM() LIMIT $1';
   const { rows } = await client.query(instrumentsQuery, [1]);
   const orders = [];

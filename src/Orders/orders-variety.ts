@@ -16,7 +16,6 @@ function hash(alg: any, data: any, salt:any, enc:any) {
 
 export const POSTOrderVariety = async (request: any, response: any) => {
   const client = await pool.connect();
-
   try {
     
     const { authorization } = request.headers;
@@ -49,15 +48,15 @@ export const POSTOrderVariety = async (request: any, response: any) => {
     } = request.body;
     const { variety } = request.params; 
 
-    // Query to find instrument ID based on the provided trading symbol
     const instrumentQuery = await client.query(
       'SELECT instrument_token FROM instruments WHERE tradingsymbol = $1',
       [tradingsymbol]
     );
+    console.log(request);
+    
     const instrument = instrumentQuery.rows[0];
 
     if (!instrument) {
-      // If trading symbol is not found, fetch top 10 symbols
       const topTradingSymbolsQuery = await client.query(
         'SELECT tradingsymbol FROM instruments LIMIT 10'
       );
@@ -70,14 +69,11 @@ export const POSTOrderVariety = async (request: any, response: any) => {
         message: 'Trading symbol not found',
         top_10_trading_symbols: topTradingSymbols,
       });
-
-      ;
       return;
     }
 
     const orderID = generateRandomOrderID();
 
-    // Insert order details into the database
     await client.query(
       `
       INSERT INTO orders (
@@ -94,9 +90,10 @@ export const POSTOrderVariety = async (request: any, response: any) => {
         status,
         variety,
         price,
-        order_timestamp
+        order_timestamp,
+        placed_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
     `,
       [
         orderID,
@@ -112,11 +109,12 @@ export const POSTOrderVariety = async (request: any, response: any) => {
         'ACCEPTED',
         variety,
         price,
-        (new Date().toISOString())
+        (new Date().toISOString()),
+        'T-ASSIT'
       ]
     );
     ;
-    // After inserting the order, call the function to calculate and insert positions
+    
     await calculateAndInsertPositions(client, orderID);
     simulateDelayedPostback(client, orderID)
     const responseData = {
@@ -125,10 +123,8 @@ export const POSTOrderVariety = async (request: any, response: any) => {
         order_id: orderID,
       },
     };
-    console.log("Response data prepared:", responseData);
-
+   
     response.status(200).jsonp(responseData);
-    console.log("Response sent successfully");
     
   } catch (error) {
     console.error('Error placing order:', error);
@@ -137,7 +133,7 @@ export const POSTOrderVariety = async (request: any, response: any) => {
       message: 'Error placing order',
     });
   } finally{
-    console.log("Reached Finally block");
+    console.log("Reached Finally for orders block");
     
     client.release();
   }

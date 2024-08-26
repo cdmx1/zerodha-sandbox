@@ -44,6 +44,7 @@ import {
   GETGTTtrigger,
   POSTGTTtrigger,
 } from "./GTT/triggers";
+import { log } from "console";
 
 const pool = require("./db");
 
@@ -216,7 +217,7 @@ export async function startWebSocketServer() {
       console.error("Error in checkDistinctTokens:", error);
     } finally {
       if (client) {
-        console.log("Finally called");
+        //console.log("Finally called");
       }
     }
   };

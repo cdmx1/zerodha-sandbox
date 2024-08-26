@@ -39,7 +39,7 @@ const updatePrices = async () => {
       );
     }
 
-    console.log('Prices updated successfully.');
+   // console.log('Prices updated successfully.');
   } catch (error) {
     console.error('Error updating prices:', error);
   }

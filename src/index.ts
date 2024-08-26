@@ -174,7 +174,7 @@ const createOrdersTable = async (client: any) => {
             tag VARCHAR(50)
           )
         `);
-        const checkExistingOrders = await client.query('SELECT COUNT(1) FROM orders');
+        /*const checkExistingOrders = await client.query('SELECT COUNT(1) FROM orders');
         const existingOrdersCount = parseInt(checkExistingOrders.rows[0].count, 10);
         if (existingOrdersCount === 0) {
         // Generate random orders
@@ -191,7 +191,7 @@ const createOrdersTable = async (client: any) => {
         console.log('Orders table created and initial data inserted successfully.');
       } else {
         console.log('Orders table already contains data. Skipping creation and insertion.');
-      }
+      }*/
     } catch (error) {
       console.error('Error creating orders table:', error);
     }
