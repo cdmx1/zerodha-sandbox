@@ -116,6 +116,7 @@ export const calculateAndInsertHoldings = async (client: any) => {
     pnl,
     day_change,
     day_change_percentage,
+    quantity,
     created_at
   )
   SELECT
@@ -123,6 +124,7 @@ export const calculateAndInsertHoldings = async (client: any) => {
     AVG(o.price) AS average_price,
     MAX(o.price) AS close_price,
     SUM(CASE WHEN o.transaction_type = 'BUY' THEN o.quantity ELSE -o.quantity END * o.price) AS pnl,
+    SUM(CASE WHEN o.transaction_type = 'BUY' THEN o.quantity ELSE -o.quantity END) AS quantity,
     0 AS day_change,
     0 AS day_change_percentage,
     CURRENT_TIMESTAMP AS created_at
