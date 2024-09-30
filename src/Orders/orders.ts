@@ -171,6 +171,7 @@ export const GETOrders = async (request: any, response: any) => {
       'FROM orders o ' +
       'INNER JOIN users u ON o.user_id = u.id ' +
       'WHERE u.id = $1 ' +
+      'AND DATE(o.order_timestamp) = CURRENT_DATE ' +
       'ORDER BY RANDOM() ' +
       'LIMIT $2',
       [user.id, ordersCount]
