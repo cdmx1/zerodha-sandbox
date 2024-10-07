@@ -1,5 +1,5 @@
 const faker = require('faker');
-
+const pool = require('../db');
 // Function to generate random trade data
 const generateRandomTradeData = (): any[] => {
   const data = [{
@@ -21,10 +21,56 @@ const generateRandomTradeData = (): any[] => {
 };
 
 // Function to handle GET request for GETTrades
-export const GETTrades = (request: any, response: any) => {
-  const randomTradeData = generateRandomTradeData();
-  response.status(200).jsonp({
-    "status": "success",
-    "data": randomTradeData,
-  });
+export const GETTrades = async (request: any, response: any) => {
+  try {
+    const { authorization } = request.headers;
+    const tokenParts = authorization.split(' ');
+    const [apiKey, accessToken] = tokenParts[tokenParts.length - 1].split(':');
+    const client = await pool.connect();
+    
+     const userQuery = await client.query(
+      'SELECT id FROM users WHERE api_key = $1 AND access_token = $2',
+      [apiKey, accessToken]
+    );
+    const user = userQuery.rows[0];
+    if (!user) {
+      response.status(401).jsonp({
+        "status": "error",
+        "message": "Unauthorized access",
+      });
+      ;
+      return;
+    }
+    const result = await client.query(
+      `SELECT o.id,
+      o.exchange, 
+      o.tradingsymbol, 
+      o.instrument_token, 
+      o.product, 
+      o.quantity, 
+      o.exchange_order_id, 
+      o.transaction_type, 
+      o.order_timestamp, 
+      o.exchange_timestamp,
+      o.average_price
+       FROM orders o
+       INNER JOIN users u ON o.user_id = u.id
+       WHERE u.id = $1
+       AND DATE(o.order_timestamp) = CURRENT_DATE
+       AND o.status IN ($2, $3)
+       ORDER BY o.order_timestamp desc`,
+      [user.id, 'COMPLETE', 'ACCEPTED']
+    );
+  
+    response.status(200).jsonp({
+      "status": "success",
+      "data": result.rows,
+    });
+    client.release();
+  } catch (error) {
+    response.status(500).jsonp({
+      "status": "error",
+      "message": error
+    });
+  }
 };

@@ -117,15 +117,12 @@ export const generateAndInsertRandomOrders = async (request: any, response: any)
 export const GETOrders = async (request: any, response: any) => {
   try {
     const { count } = request.query;
-    const ordersCount = count ? parseInt(count) : 3;
-
     const { authorization } = request.headers;
-    // Extract user_id from the authorization header or token
+    
     const tokenParts = authorization.split(' ');
     const [apiKey, accessToken] = tokenParts[tokenParts.length - 1].split(':');
     const client = await pool.connect();
     
-     // Fetch user_id based on the provided api_key and access_token
      const userQuery = await client.query(
       'SELECT id FROM users WHERE api_key = $1 AND access_token = $2',
       [apiKey, accessToken]
@@ -140,7 +137,6 @@ export const GETOrders = async (request: any, response: any) => {
       return;
     }
 
-    // Fetch specified number of random orders associated with the user using a JOIN
     const result = await client.query(
       'SELECT ' +
         'o.id as order_id, ' +
@@ -172,17 +168,15 @@ export const GETOrders = async (request: any, response: any) => {
       'INNER JOIN users u ON o.user_id = u.id ' +
       'WHERE u.id = $1 ' +
       'AND DATE(o.order_timestamp) = CURRENT_DATE ' +
-      'ORDER BY RANDOM() ' +
-      'LIMIT $2',
-      [user.id, ordersCount]
+      'ORDER BY order_timestamp asc ',
+      [user.id]
     );
-
-    ;
 
     response.status(200).jsonp({
       "status": "success",
       "data": result.rows,
     });
+    client.release();
   } catch (error) {
     response.status(500).jsonp({
       "status": "error",
