@@ -51,7 +51,7 @@ export const POSTOrderVariety = async (request: any, response: any) => {
     );  
     const instrument = instrumentQuery.rows[0];
 
-    const average_price = price / quantity;
+    const average_price = price;
     const filled_quantity = quantity;
    
     if (!instrument) {
