@@ -16,13 +16,10 @@ function hash(alg: any, data: any, salt:any, enc:any) {
 
 export const POSTOrderVariety = async (request: any, response: any) => {
   const client = await pool.connect();
-  try {
-    
+  try {  
     const { authorization } = request.headers;
-    // Extract user_id from the authorization header or token
     const tokenParts = authorization.split(' ');
     const [apiKey, accessToken] = tokenParts[tokenParts.length - 1].split(':');
-     // Fetch user_id based on the provided api_key and access_token
      const userQuery = await client.query(
       'SELECT id FROM users WHERE api_key = $1 AND access_token = $2',
       [apiKey, accessToken]
@@ -51,11 +48,12 @@ export const POSTOrderVariety = async (request: any, response: any) => {
     const instrumentQuery = await client.query(
       'SELECT instrument_token FROM instruments WHERE tradingsymbol = $1',
       [tradingsymbol]
-    );
-    console.log(request);
-    
+    );  
     const instrument = instrumentQuery.rows[0];
 
+    const average_price = price / quantity;
+    const filled_quantity = quantity;
+   
     if (!instrument) {
       const topTradingSymbolsQuery = await client.query(
         'SELECT tradingsymbol FROM instruments LIMIT 10'
@@ -91,9 +89,11 @@ export const POSTOrderVariety = async (request: any, response: any) => {
         variety,
         price,
         order_timestamp,
-        placed_by
+        placed_by,
+        average_price,
+        filled_quantity
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 , $17)
     `,
       [
         orderID,
@@ -110,7 +110,9 @@ export const POSTOrderVariety = async (request: any, response: any) => {
         variety,
         price,
         (new Date().toISOString()),
-        'T-ASSIT'
+        'T-ASSIT',
+        average_price,
+        filled_quantity
       ]
     );
     ;
@@ -255,7 +257,11 @@ try {
   const api_secret = result.rows[0].api_secret;
   const checksum = hash("sha256",( orderId + orderDetails.order_timestamp.toISOString() + api_secret),null,null);
  
-    // Update the payload with relevant details from the orders table
+  if(orderDetails.order_type != 'LIMIT')
+  {
+    orderDetails.price = 0;
+  }
+  
     const updatedStatusPayload = {
       "user_id": orderDetails.user_id,
       "unfilled_quantity": 0,

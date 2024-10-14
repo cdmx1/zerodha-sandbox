@@ -46,7 +46,7 @@ const updatePrices = async () => {
 };
 
 
-cron.schedule('*/1 * * * * *', updatePrices);
+cron.schedule('*/3 * * * * *', updatePrices);
 process.on('SIGINT', () => {
   pool.end(() => {
     console.log('Database connection closed.');
