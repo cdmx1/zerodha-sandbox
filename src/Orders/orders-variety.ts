@@ -239,6 +239,16 @@ const postback_url = process.env.POSTBACK_URL || 'http://localhost:8100/api/z-po
 
 async function simulateDelayedPostback(client:any, orderId: any) {
 try {
+
+  const status = Math.random() < 0.9 ? 'COMPLETE' : 'REJECTED';
+  const updateStatusQuery = `
+    UPDATE orders
+    SET status = $1
+    WHERE id = $2
+    RETURNING *;
+  `;
+  await client.query(updateStatusQuery, [status, orderId]);
+
   const orderQuery = await client.query(
     `SELECT * FROM orders WHERE id = $1`,
     [orderId]
@@ -252,8 +262,7 @@ try {
       values: [orderDetails.user_id],
     };
   
-    const result = await client.query(query);
-
+  const result = await client.query(query);
   const api_secret = result.rows[0].api_secret;
   const checksum = hash("sha256",( orderId + orderDetails.order_timestamp.toISOString() + api_secret),null,null);
  
@@ -271,7 +280,7 @@ try {
       "order_id": orderId,
       "exchange_order_id": orderDetails.exchange_order_id,
       "parent_order_id": orderDetails.parent_order_id,
-      "status": "COMPLETE",
+      "status": orderDetails.status,
       "status_message": orderDetails.status_message,
       "order_timestamp": orderDetails.order_timestamp,
       "exchange_update_timestamp": orderDetails.exchange_timestamp,
@@ -298,11 +307,10 @@ try {
       "guid": "93076XWl1mzshtvIgb"
     };
    
-    // Assuming sendPostbackUpdate function sends the payload
     sendPostbackUpdate(updatedStatusPayload);
 
     setTimeout(() => {
-    }, 10000); // 10 seconds
+    }, 10000);
   } else {
     console.log("Order ID not found or user not associated with the order.");
   }
@@ -328,7 +336,6 @@ function sendPostbackUpdate(payload: any) {
   };
   axios.post(apiUrl,  JSON.stringify(payload), headers)
     .then((response: { data: any; }) => {
-      console.log('Postback sent successfully:', response.data);
     })
     .catch((error: any) => {
       if (error.response) {
